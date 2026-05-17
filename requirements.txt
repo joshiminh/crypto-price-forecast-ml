@@ -4,3 +4,7 @@ numpy
 matplotlib
 scikit-learn
 seaborn
+statsmodels
+plotly
+prophet
+tensorflow
