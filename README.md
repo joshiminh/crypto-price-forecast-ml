@@ -1,73 +1,64 @@
-# Crypto Price Forecast ML
+# 💰 Crypto Price Forecast ML
 
-Simple CLI for loading crypto statistics data, engineering features, and training forecast models.
+A concise machine learning project for forecasting cryptocurrency prices using LSTM and GRU models. 📈🤖
 
-## Setup
+## ✨ Overview
+This repository contains code, data, and trained models for building time-series models to predict crypto price movements.
+- **Models:** LSTM and GRU implemented in TensorFlow / Keras.
+- **Data:** historical crypto statistics in `data/`.
+- **Notebook:** `crypto_price_forecast.ipynb` for exploration.
 
-Use a Python virtual environment (`venv`) for this project.
+## 📁 Repository Structure
+- `main.py` — entrypoint for running pipelines.
+- `src/data_loader.py` — data ingestion and preprocessing.
+- `src/feature_engineering.py` — feature generation and transformations.
+- `src/models.py` — model architectures (LSTM, GRU).
+- `src/training.py` — training and evaluation loops.
+- `data/crypto_statistics_data.csv` — raw dataset.
+- `results/` — trained models and outputs.
 
-Windows PowerShell:
+## ⚡ Quick Setup
+1. Create a virtual environment:
+   python -m venv .venv
+2. Activate it (Windows PowerShell):
+   .venv\Scripts\Activate.ps1
+3. Install dependencies:
+   pip install -r requirements.txt
+4. Verify the environment:
+   python main.py --help
 
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
+## 🧭 Usage
+- Run the full training pipeline:
+   python main.py --train
+- Evaluate a saved model:
+   python main.py --evaluate --model results/lstm_model.keras
+- Open the exploratory notebook:
+   Use Jupyter to open `crypto_price_forecast.ipynb`.
 
-Windows (cmd.exe):
+## 🧪 Data Notes
+- `data/crypto_statistics_data.csv` contains historical price and indicator features.
+- Ensure data is cleaned and aligned before training.
+- Use `src/data_loader.py` to customize windows and resampling.
 
-```bat
-python -m venv .venv
-.venv\Scripts\activate.bat
-pip install -r requirements.txt
-```
+## 🔧 Configuration
+- Hyperparameters are set in `src/training.py`; modify learning rate, batch size, epochs.
+- Model save/load paths use `results/` by default.
 
-macOS / Linux:
+## 🏗️ Model Details
+- LSTM: stacked LSTM layers with dropout for regularization.
+- GRU: gated recurrent units optimized for faster convergence.
+- Both models output a regression forecast for the next price step.
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
+## 📊 Evaluation
+- Metrics: MSE, MAE, and directional accuracy.
+- Evaluation utilities are available in `src/training.py`.
 
-## Run
+## 💾 Results
+- Trained models saved in `results/` as `.keras` files.
+- Example files: `gru_model.keras`, `lstm_model.keras`.
 
-Start the interactive menu with:
-
-```bash
-py main.py
-```
-
-Use the CLI directly if you want to skip the menu:
-
-```bash
-py main.py --run-pipeline --models all
-py main.py --run-pipeline --models lstm
-py main.py --run-pipeline --models lstm,arima
-py main.py --run-pipeline --models ensemble
-```
-
-## Models
-
-Available models:
-
-- LSTM
-- GRU
-- ARIMA
-- Prophet
-- Ensemble
-
-The ensemble uses the base model forecasts and averages their predictions on the shared test split.
-
-## Layout
-
-- `main.py`: CLI menu and optional arguments.
-- `src/models.py`: model list, selection helpers, and model builders.
-- `src/training.py`: metrics, algorithms, and training orchestration.
-- `src/data_loader.py`: data loading.
-- `src/feature_engineering.py`: feature engineering.
-
-## Notes
-
-- Use Python 3.8 or newer.
-- The `.venv/` folder is ignored by Git via `.gitignore`.
+## 🛠️ Troubleshooting
+- If GPU is not available, training falls back to CPU.
+- On Windows, allow `Activate.ps1` via execution policy if blocked.
+- For CUDA errors, verify drivers and TensorFlow compatibility.
+ 
