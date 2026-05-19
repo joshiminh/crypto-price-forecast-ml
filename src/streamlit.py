@@ -57,6 +57,8 @@ COLOR_MAP = {
     "prophet": "#dc2626",
     "ensemble": "#111827",
 }
+CHART_TEXT_COLOR = "#e5e7eb"
+CHART_GRID_COLOR = "rgba(148,163,184,0.22)"
 
 
 def apply_app_styles() -> None:
@@ -65,28 +67,29 @@ def apply_app_styles() -> None:
         <style>
         .stApp {
             background:
-                radial-gradient(circle at top left, rgba(15,118,110,0.10), transparent 30%),
-                radial-gradient(circle at top right, rgba(249,115,22,0.12), transparent 28%),
-                linear-gradient(180deg, #f6f7f4 0%, #eef2f7 100%);
+                radial-gradient(circle at top left, rgba(20,184,166,0.12), transparent 35%),
+                radial-gradient(circle at top right, rgba(249,115,22,0.10), transparent 30%),
+                linear-gradient(180deg, #020617 0%, #0f172a 60%, #111827 100%);
+            color: #e5e7eb;
         }
         .block-container {
             padding-top: 2rem;
             padding-bottom: 2rem;
         }
         .hero-shell {
-            background: linear-gradient(135deg, #f8fafc 0%, #ffffff 55%, #fef3e7 100%);
-            border: 1px solid rgba(15, 23, 42, 0.08);
+            background: linear-gradient(135deg, rgba(15,23,42,0.86) 0%, rgba(30,41,59,0.84) 50%, rgba(51,65,85,0.86) 100%);
+            border: 1px solid rgba(148, 163, 184, 0.22);
             border-radius: 28px;
             padding: 2rem 2.2rem;
-            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+            box-shadow: 0 20px 45px rgba(2, 6, 23, 0.45);
             margin-bottom: 1.2rem;
         }
         .hero-kicker {
             display: inline-block;
             padding: 0.35rem 0.7rem;
             border-radius: 999px;
-            background: rgba(15, 118, 110, 0.10);
-            color: #0f766e;
+            background: rgba(20, 184, 166, 0.20);
+            color: #99f6e4;
             font-size: 0.78rem;
             font-weight: 700;
             letter-spacing: 0.08em;
@@ -96,46 +99,46 @@ def apply_app_styles() -> None:
             margin: 0.85rem 0 0.35rem 0;
             font-size: 2.4rem;
             line-height: 1.05;
-            color: #0f172a;
+            color: #f8fafc;
         }
         .hero-copy {
             margin: 0;
             max-width: 56rem;
-            color: #475569;
+            color: #cbd5e1;
             font-size: 1rem;
         }
         .metric-card {
-            background: rgba(255,255,255,0.9);
-            border: 1px solid rgba(15, 23, 42, 0.08);
+            background: rgba(15, 23, 42, 0.76);
+            border: 1px solid rgba(148, 163, 184, 0.18);
             border-radius: 22px;
             padding: 1rem 1.1rem;
-            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+            box-shadow: 0 10px 30px rgba(2, 6, 23, 0.3);
         }
         .metric-label {
-            color: #64748b;
+            color: #94a3b8;
             font-size: 0.82rem;
             text-transform: uppercase;
             letter-spacing: 0.06em;
             margin-bottom: 0.35rem;
         }
         .metric-value {
-            color: #0f172a;
+            color: #f8fafc;
             font-size: 1.65rem;
             font-weight: 700;
             line-height: 1.05;
         }
         .metric-note {
-            color: #475569;
+            color: #cbd5e1;
             font-size: 0.9rem;
             margin-top: 0.35rem;
         }
         .section-note {
-            color: #475569;
+            color: #cbd5e1;
             margin: 0.2rem 0 1rem 0;
         }
         .spotlight-card {
-            background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,255,255,0.82));
-            border: 1px solid rgba(15, 23, 42, 0.08);
+            background: linear-gradient(180deg, rgba(30,41,59,0.82), rgba(15,23,42,0.82));
+            border: 1px solid rgba(148, 163, 184, 0.2);
             border-radius: 24px;
             padding: 1.1rem 1.2rem;
             min-height: 150px;
@@ -144,17 +147,33 @@ def apply_app_styles() -> None:
             font-size: 0.82rem;
             text-transform: uppercase;
             letter-spacing: 0.08em;
-            color: #64748b;
+            color: #94a3b8;
         }
         .spotlight-value {
             font-size: 1.9rem;
-            color: #0f172a;
+            color: #f8fafc;
             font-weight: 700;
             margin: 0.4rem 0 0.35rem 0;
         }
         .spotlight-copy {
-            color: #475569;
+            color: #cbd5e1;
             font-size: 0.92rem;
+        }
+        [data-testid="stSidebar"] {
+            background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(17,24,39,0.96));
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        [data-testid="stSidebar"] * {
+            color: #e5e7eb;
+        }
+        [data-baseweb="select"] > div,
+        [data-baseweb="tag"] {
+            background-color: rgba(30,41,59,0.9) !important;
+            border-color: rgba(148,163,184,0.35) !important;
+            color: #e5e7eb !important;
+        }
+        [data-baseweb="slider"] [role="slider"] {
+            background: #14b8a6;
         }
         .stTabs [data-baseweb="tab-list"] {
             gap: 0.45rem;
@@ -162,17 +181,48 @@ def apply_app_styles() -> None:
         .stTabs [data-baseweb="tab"] {
             border-radius: 999px;
             padding: 0.65rem 1rem;
-            background: rgba(255,255,255,0.7);
-            border: 1px solid rgba(15, 23, 42, 0.07);
+            background: rgba(30,41,59,0.8);
+            border: 1px solid rgba(148, 163, 184, 0.2);
         }
         .stTabs [aria-selected="true"] {
-            background: #0f172a !important;
-            color: #f8fafc !important;
+            background: #14b8a6 !important;
+            color: #042f2e !important;
+            font-weight: 700;
         }
         </style>
         """,
         unsafe_allow_html=True,
     )
+
+
+def apply_chart_theme(figure: go.Figure) -> go.Figure:
+    figure.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(15,23,42,0.86)",
+        font=dict(color=CHART_TEXT_COLOR),
+        title_font=dict(color=CHART_TEXT_COLOR),
+        legend=dict(
+            orientation="h",
+            font=dict(color=CHART_TEXT_COLOR),
+            bgcolor="rgba(15,23,42,0.45)",
+            bordercolor="rgba(148,163,184,0.2)",
+            borderwidth=1,
+        ),
+    )
+    figure.update_xaxes(
+        tickfont=dict(color=CHART_TEXT_COLOR),
+        title_font=dict(color=CHART_TEXT_COLOR),
+        gridcolor=CHART_GRID_COLOR,
+        zerolinecolor=CHART_GRID_COLOR,
+    )
+    figure.update_yaxes(
+        tickfont=dict(color=CHART_TEXT_COLOR),
+        title_font=dict(color=CHART_TEXT_COLOR),
+        gridcolor=CHART_GRID_COLOR,
+        zerolinecolor=CHART_GRID_COLOR,
+    )
+    figure.update_annotations(font=dict(color=CHART_TEXT_COLOR))
+    return figure
 
 
 def create_sequences(series: np.ndarray, lookback: int) -> tuple[np.ndarray, np.ndarray]:
@@ -215,6 +265,43 @@ def load_prepared_frame(max_points: int = DEFAULT_MAX_POINTS) -> pd.DataFrame:
         df = df.iloc[-max_points:].reset_index(drop=True)
 
     return df
+
+
+def crypto_selector_options(df: pd.DataFrame) -> list[tuple[str, str]]:
+    if "crypto" not in df.columns:
+        return []
+
+    option_frame = df.copy()
+    option_frame["crypto"] = option_frame["crypto"].astype(str).str.strip()
+    option_frame = option_frame[option_frame["crypto"] != ""]
+
+    if "symbol" in option_frame.columns:
+        option_frame["symbol"] = option_frame["symbol"].fillna("").astype(str).str.strip()
+    else:
+        option_frame["symbol"] = ""
+
+    if "name" in option_frame.columns:
+        option_frame["name"] = option_frame["name"].fillna("").astype(str).str.strip()
+    else:
+        option_frame["name"] = ""
+
+    option_frame = option_frame[["crypto", "symbol", "name"]].drop_duplicates(subset=["crypto"]).sort_values("crypto")
+    options: list[tuple[str, str]] = []
+    for row in option_frame.itertuples(index=False):
+        crypto_code = row.crypto
+        label_parts = [crypto_code]
+        if row.symbol:
+            label_parts.append(f"({row.symbol})")
+        if row.name:
+            label_parts.append(f"- {row.name}")
+        options.append((crypto_code, " ".join(label_parts)))
+    return options
+
+
+def filter_frame_by_crypto(df: pd.DataFrame, selected_crypto: str) -> pd.DataFrame:
+    if "crypto" not in df.columns:
+        return df
+    return df[df["crypto"] == selected_crypto].sort_values("date").reset_index(drop=True)
 
 
 def prepare_split(df: pd.DataFrame, lookback: int = DEFAULT_LOOKBACK, test_ratio: float = TEST_RATIO) -> dict[str, Any] | None:
@@ -557,13 +644,10 @@ def build_price_history_figure(df: pd.DataFrame) -> go.Figure:
     figure.update_layout(
         height=340,
         margin=dict(l=10, r=10, t=20, b=10),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(255,255,255,0.78)",
-        legend=dict(orientation="h"),
     )
     figure.update_xaxes(showgrid=False)
-    figure.update_yaxes(showgrid=True, gridcolor="rgba(148,163,184,0.18)")
-    return figure
+    figure.update_yaxes(showgrid=True, gridcolor=CHART_GRID_COLOR)
+    return apply_chart_theme(figure)
 
 
 def build_comparison_figure(results: dict[str, dict[str, Any]], test_dates: np.ndarray | None) -> go.Figure:
@@ -615,15 +699,12 @@ def build_comparison_figure(results: dict[str, dict[str, Any]], test_dates: np.n
     figure.update_layout(
         height=760,
         margin=dict(l=10, r=10, t=60, b=10),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(255,255,255,0.78)",
-        legend=dict(orientation="h"),
     )
     figure.update_xaxes(title_text="Date", row=1, col=1, showgrid=False)
-    figure.update_yaxes(title_text="Price", row=1, col=1, gridcolor="rgba(148,163,184,0.18)")
+    figure.update_yaxes(title_text="Price", row=1, col=1, gridcolor=CHART_GRID_COLOR)
     figure.update_xaxes(title_text="Residual", row=2, col=1, showgrid=False)
-    figure.update_yaxes(title_text="Count", row=2, col=1, gridcolor="rgba(148,163,184,0.18)")
-    return figure
+    figure.update_yaxes(title_text="Count", row=2, col=1, gridcolor=CHART_GRID_COLOR)
+    return apply_chart_theme(figure)
 
 
 def build_future_figure(results: dict[str, dict[str, Any]], forward_context: dict[str, Any]) -> go.Figure:
@@ -661,17 +742,14 @@ def build_future_figure(results: dict[str, dict[str, Any]], forward_context: dic
             )
         )
 
-    figure.add_hline(y=last_close, line_dash="dot", line_color="rgba(15,23,42,0.35)")
+    figure.add_hline(y=last_close, line_dash="dot", line_color="rgba(203,213,225,0.5)")
     figure.update_layout(
         height=520,
         margin=dict(l=10, r=10, t=30, b=10),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(255,255,255,0.78)",
-        legend=dict(orientation="h"),
     )
     figure.update_xaxes(title_text="Forecast horizon", showgrid=False)
-    figure.update_yaxes(title_text="Projected close", gridcolor="rgba(148,163,184,0.18)")
-    return figure
+    figure.update_yaxes(title_text="Projected close", gridcolor=CHART_GRID_COLOR)
+    return apply_chart_theme(figure)
 
 
 def render_metric_cards(df: pd.DataFrame, evaluation_context: dict[str, Any] | None, forecast_days: int) -> None:
@@ -816,11 +894,21 @@ def main() -> None:
         st.error("No data loaded.")
         return
 
-    evaluation_context = prepare_split(df)
-    forward_context = prepare_forward_context(df)
+    crypto_options = crypto_selector_options(df)
+    if not crypto_options:
+        st.error("No crypto options found in the dataset.")
+        return
+
+    default_crypto = "BTC/USD" if any(code == "BTC/USD" for code, _ in crypto_options) else crypto_options[0][0]
 
     with st.sidebar:
         st.header("Forecast Controls")
+        selected_crypto = st.selectbox(
+            "Crypto",
+            options=[code for code, _ in crypto_options],
+            index=next((i for i, (code, _) in enumerate(crypto_options) if code == default_crypto), 0),
+            format_func=lambda crypto_code: next(label for code, label in crypto_options if code == crypto_code),
+        )
         selected_models = st.multiselect(
             "Models",
             options=MODEL_OPTIONS,
@@ -831,6 +919,10 @@ def main() -> None:
         st.caption(f"Lookback window: {DEFAULT_LOOKBACK} points")
         st.caption(f"Backtest split: {int(TEST_RATIO * 100)}%")
         submit = st.button("Run Forecast Studio", type="primary")
+
+    df = filter_frame_by_crypto(df, selected_crypto)
+    evaluation_context = prepare_split(df)
+    forward_context = prepare_forward_context(df)
 
     render_metric_cards(df, evaluation_context, forecast_days)
     st.markdown('<p class="section-note">The controls drive both the backtest comparison and the forward-looking forecast view.</p>', unsafe_allow_html=True)
