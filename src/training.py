@@ -1,5 +1,6 @@
 import contextlib
 import io
+import json
 import logging
 import os
 import warnings
@@ -16,12 +17,14 @@ from statsmodels.tsa.arima.model import ARIMA
 
 from .data_loader import load_data
 from .feature_engineering import engineer_features
-from .models import BASE_MODELS, available_models, build_gru_model, build_lstm_model, build_prophet_model, normalize_model_selection
+from .models import BASE_MODELS, MODEL_LABELS, SEQUENCE_MODELS, available_models, build_gru_model, build_lstm_model, build_prophet_model, normalize_model_selection
 from .models import HAS_PROPHET
 
 logging.getLogger("cmdstanpy").setLevel(logging.WARNING)
 logging.getLogger("prophet").setLevel(logging.WARNING)
 logging.getLogger("tensorflow").setLevel(logging.ERROR)
+
+RESULTS_DIR = Path("results")
 
 
 def rmse(y_true, y_pred):
@@ -114,6 +117,60 @@ def _forecast_sequence_model(model, context, test_series):
     return np.asarray(predictions)
 
 
+def _artifact_path(results_dir, model_name):
+    suffix = ".keras" if model_name in SEQUENCE_MODELS else ".json"
+    return results_dir / f"{model_name}{suffix}"
+
+
+def _legacy_sequence_artifact_path(results_dir, model_name):
+    if model_name not in SEQUENCE_MODELS:
+        return None
+    return results_dir / f"{model_name}_model.keras"
+
+
+def _serialize_result(result):
+    payload = {
+        "model_key": result["model_key"],
+        "model": result["model"],
+        "status": result.get("status", "ready"),
+    }
+    for key in ("rmse", "mae", "mape"):
+        if key in result:
+            payload[key] = float(result[key])
+    for key in ("predictions", "actual"):
+        if key in result and result[key] is not None:
+            payload[key] = np.asarray(result[key], dtype=float).tolist()
+    if result.get("message"):
+        payload["message"] = result["message"]
+    return payload
+
+
+def _write_result_artifact(results_dir, result):
+    if result["model_key"] in SEQUENCE_MODELS:
+        legacy_path = _legacy_sequence_artifact_path(results_dir, result["model_key"])
+        if legacy_path is not None and legacy_path.exists():
+            legacy_path.unlink()
+        return
+
+    artifact_path = _artifact_path(results_dir, result["model_key"])
+    artifact_path.write_text(json.dumps(_serialize_result(result), indent=2), encoding="utf-8")
+
+
+def _write_manifest(results_dir, results):
+    manifest = {"artifacts": []}
+    for result in results:
+        model_key = result["model_key"]
+        manifest["artifacts"].append(
+            {
+                "model_key": model_key,
+                "model": result["model"],
+                "status": result.get("status", "ready"),
+                "path": str(_artifact_path(results_dir, model_key).as_posix()),
+            }
+        )
+    (results_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+
 def _train_sequence_model(model_name, builder, context, test_series, results_dir):
     model = builder(context["X_train"].shape[1])
     with _silence_external_output():
@@ -128,14 +185,19 @@ def _train_sequence_model(model_name, builder, context, test_series, results_dir
 
     predictions = _forecast_sequence_model(model, context, test_series)
     metrics = {
-        "model": model_name,
+        "model_key": model_name,
+        "model": MODEL_LABELS[model_name],
         "predictions": predictions,
         "actual": np.asarray(test_series, dtype=float),
         "rmse": rmse(test_series, predictions),
         "mae": mean_absolute_error(test_series, predictions),
         "mape": mape(test_series, predictions),
     }
-    model.save(results_dir / f"{model_name.lower()}_model.keras")
+    artifact_path = _artifact_path(results_dir, model_name)
+    model.save(artifact_path)
+    legacy_path = _legacy_sequence_artifact_path(results_dir, model_name)
+    if legacy_path is not None and legacy_path.exists():
+        legacy_path.unlink()
     return metrics
 
 
@@ -146,6 +208,7 @@ def _train_arima(train_series, test_series):
 
     predictions = np.asarray(forecast)
     return {
+        "model_key": "arima",
         "model": "ARIMA",
         "predictions": predictions,
         "actual": np.asarray(test_series, dtype=float),
@@ -169,6 +232,7 @@ def _train_prophet(train_series, test_series, train_dates, test_dates):
 
     predictions = forecast["yhat"].to_numpy()
     return {
+        "model_key": "prophet",
         "model": "Prophet",
         "predictions": predictions,
         "actual": np.asarray(test_series, dtype=float),
@@ -189,6 +253,7 @@ def _train_ensemble(component_results):
     predictions = stacked_predictions.mean(axis=1)
 
     return {
+        "model_key": "ensemble",
         "model": "Ensemble",
         "predictions": predictions,
         "actual": actual,
@@ -261,16 +326,16 @@ def train_models(df, selected_models=None, max_points=5000, lookback=30):
     print(f"Training {len(selected_models)} model(s)...")
     print(progress_line(0, len(selected_models), "starting"))
 
-    results_dir = Path("results")
+    results_dir = RESULTS_DIR
     results_dir.mkdir(parents=True, exist_ok=True)
 
     for index, model_name in enumerate(selected_models, start=1):
         result = None
 
         if model_name == "lstm" and sequence_context is not None:
-            result = _train_sequence_model("LSTM", build_lstm_model, sequence_context, split["test_series"], results_dir)
+            result = _train_sequence_model("lstm", build_lstm_model, sequence_context, split["test_series"], results_dir)
         elif model_name == "gru" and sequence_context is not None:
-            result = _train_sequence_model("GRU", build_gru_model, sequence_context, split["test_series"], results_dir)
+            result = _train_sequence_model("gru", build_gru_model, sequence_context, split["test_series"], results_dir)
         elif model_name == "arima":
             result = _train_arima(split["train_series"], split["test_series"])
         elif model_name == "prophet":
@@ -284,12 +349,20 @@ def train_models(df, selected_models=None, max_points=5000, lookback=30):
             result = None
 
         if result is None:
-            results.append({"model": model_name.upper(), "status": "skipped"})
-            print(progress_line(index, len(selected_models), f"{model_name.upper()} skipped"))
+            skipped = {
+                "model_key": model_name,
+                "model": MODEL_LABELS[model_name],
+                "status": "skipped",
+                "message": "Model artifact could not be generated.",
+            }
+            results.append(skipped)
+            _write_result_artifact(results_dir, skipped)
+            print(progress_line(index, len(selected_models), f"{MODEL_LABELS[model_name]} skipped"))
             continue
 
         result_map[model_name] = result
         results.append(result)
+        _write_result_artifact(results_dir, result)
         print(
             progress_line(
                 index,
@@ -298,4 +371,5 @@ def train_models(df, selected_models=None, max_points=5000, lookback=30):
             )
         )
 
+    _write_manifest(results_dir, results)
     return results

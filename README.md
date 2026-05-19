@@ -29,11 +29,21 @@ This repository contains code, data, and trained models for building time-series
 
 ## 🧭 Usage
 - Run the full training pipeline:
-   python main.py --train
-- Evaluate a saved model:
-   python main.py --evaluate --model results/lstm_model.keras
+   python main.py --run-pipeline --models all
+- Launch the terminal menu:
+   python main.py
+- From the menu, choose option 3 to start the Streamlit UI in the current terminal.
+- Stop the CLI-launched Streamlit server with `Ctrl+C`.
+- Launch the Streamlit UI directly:
+   streamlit run src/streamlit.py
 - Open the exploratory notebook:
    Use Jupyter to open `crypto_price_forecast.ipynb`.
+
+## 🌐 Streamlit UI
+The Streamlit app compares the saved models on a backtest split and projects the next 1-30 days from the latest history.
+- LSTM and GRU load from `results/lstm.keras` and `results/gru.keras`.
+- ARIMA, Prophet, and Ensemble now generate named result artifacts in `results/` during training.
+- The UI includes a forward-looking forecast horizon control and a separate backtest comparison view.
 
 ## 🧪 Data Notes
 - `data/crypto_statistics_data.csv` contains historical price and indicator features.
@@ -54,11 +64,13 @@ This repository contains code, data, and trained models for building time-series
 - Evaluation utilities are available in `src/training.py`.
 
 ## 💾 Results
-- Trained models saved in `results/` as `.keras` files.
-- Example files: `gru_model.keras`, `lstm_model.keras`.
+- Trained neural models are saved in `results/` as `.keras` files with the model key as the filename.
+- Example files: `gru.keras`, `lstm.keras`.
+- Additional generated artifacts include `arima.json`, `prophet.json`, `ensemble.json`, and `manifest.json`.
 
 ## 🛠️ Troubleshooting
 - If GPU is not available, training falls back to CPU.
 - On Windows, allow `Activate.ps1` via execution policy if blocked.
 - For CUDA errors, verify drivers and TensorFlow compatibility.
+- Do not start the Streamlit UI with `python src/streamlit.py`; use `streamlit run src/streamlit.py` instead.
  

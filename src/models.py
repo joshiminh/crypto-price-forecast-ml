@@ -23,6 +23,8 @@ MODEL_LABELS = {
     "ensemble": "Ensemble",
 }
 
+SEQUENCE_MODELS = ["lstm", "gru"]
+
 
 def available_models(include_ensemble=True):
     return BASE_MODELS + ["ensemble"] if include_ensemble else list(BASE_MODELS)
