@@ -15,9 +15,18 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 from statsmodels.tsa.arima.model import ARIMA
 
-from .data_loader import load_data
-from .feature_engineering import engineer_features
-from .models import BASE_MODELS, MODEL_LABELS, SEQUENCE_MODELS, available_models, build_gru_model, build_lstm_model, build_prophet_model, normalize_model_selection
+from .data import engineer_features, load_data
+from .models import (
+    BASE_MODELS,
+    MODEL_LABELS,
+    SEQUENCE_MODELS,
+    available_models,
+    build_gru_model,
+    build_lstm_model,
+    build_prophet_model,
+    normalize_model_selection,
+    normalize_optimizer,
+)
 from .models import HAS_PROPHET
 
 logging.getLogger("cmdstanpy").setLevel(logging.WARNING)
@@ -133,6 +142,7 @@ def _serialize_result(result):
         "model_key": result["model_key"],
         "model": result["model"],
         "status": result.get("status", "ready"),
+        "optimizer": result.get("optimizer"),
     }
     for key in ("rmse", "mae", "mape"):
         if key in result:
@@ -156,23 +166,8 @@ def _write_result_artifact(results_dir, result):
     artifact_path.write_text(json.dumps(_serialize_result(result), indent=2), encoding="utf-8")
 
 
-def _write_manifest(results_dir, results):
-    manifest = {"artifacts": []}
-    for result in results:
-        model_key = result["model_key"]
-        manifest["artifacts"].append(
-            {
-                "model_key": model_key,
-                "model": result["model"],
-                "status": result.get("status", "ready"),
-                "path": str(_artifact_path(results_dir, model_key).as_posix()),
-            }
-        )
-    (results_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-
-
-def _train_sequence_model(model_name, builder, context, test_series, results_dir):
-    model = builder(context["X_train"].shape[1])
+def _train_sequence_model(model_name, builder, context, test_series, results_dir, optimizer):
+    model = builder(context["X_train"].shape[1], optimizer=optimizer)
     with _silence_external_output():
         model.fit(
             context["X_train"],
@@ -187,6 +182,7 @@ def _train_sequence_model(model_name, builder, context, test_series, results_dir
     metrics = {
         "model_key": model_name,
         "model": MODEL_LABELS[model_name],
+        "optimizer": optimizer,
         "predictions": predictions,
         "actual": np.asarray(test_series, dtype=float),
         "rmse": rmse(test_series, predictions),
@@ -210,6 +206,7 @@ def _train_arima(train_series, test_series):
     return {
         "model_key": "arima",
         "model": "ARIMA",
+        "optimizer": None,
         "predictions": predictions,
         "actual": np.asarray(test_series, dtype=float),
         "rmse": rmse(test_series, predictions),
@@ -234,6 +231,7 @@ def _train_prophet(train_series, test_series, train_dates, test_dates):
     return {
         "model_key": "prophet",
         "model": "Prophet",
+        "optimizer": None,
         "predictions": predictions,
         "actual": np.asarray(test_series, dtype=float),
         "rmse": rmse(test_series, predictions),
@@ -255,6 +253,7 @@ def _train_ensemble(component_results):
     return {
         "model_key": "ensemble",
         "model": "Ensemble",
+        "optimizer": None,
         "predictions": predictions,
         "actual": actual,
         "rmse": rmse(actual, predictions),
@@ -274,13 +273,13 @@ def load_and_prepare_data():
     return engineer_features(df)
 
 
-def run_pipeline(selected_models=None):
+def run_pipeline(selected_models=None, optimizer="adam"):
     try:
         df = load_and_prepare_data()
         if df is None:
             return []
 
-        results = train_models(df, selected_models=selected_models)
+        results = train_models(df, selected_models=selected_models, optimizer=optimizer)
         print("Done.")
         return results
     except KeyboardInterrupt:
@@ -288,7 +287,7 @@ def run_pipeline(selected_models=None):
         raise SystemExit(0)
 
 
-def train_models(df, selected_models=None, max_points=5000, lookback=30):
+def train_models(df, selected_models=None, max_points=5000, lookback=30, optimizer="adam"):
     if df.empty:
         print("No data loaded.")
         return []
@@ -323,19 +322,35 @@ def train_models(df, selected_models=None, max_points=5000, lookback=30):
         if sequence_context is None:
             print("Not enough data for LSTM/GRU.")
 
-    print(f"Training {len(selected_models)} model(s)...")
+    optimizer_name = normalize_optimizer(optimizer)
+    print(f"Training {len(selected_models)} model(s) with optimizer: {optimizer_name}")
     print(progress_line(0, len(selected_models), "starting"))
 
-    results_dir = RESULTS_DIR
+    # Store each training run under its optimizer namespace.
+    results_dir = RESULTS_DIR / optimizer_name
     results_dir.mkdir(parents=True, exist_ok=True)
 
     for index, model_name in enumerate(selected_models, start=1):
         result = None
 
         if model_name == "lstm" and sequence_context is not None:
-            result = _train_sequence_model("lstm", build_lstm_model, sequence_context, split["test_series"], results_dir)
+            result = _train_sequence_model(
+                "lstm",
+                build_lstm_model,
+                sequence_context,
+                split["test_series"],
+                results_dir,
+                optimizer_name,
+            )
         elif model_name == "gru" and sequence_context is not None:
-            result = _train_sequence_model("gru", build_gru_model, sequence_context, split["test_series"], results_dir)
+            result = _train_sequence_model(
+                "gru",
+                build_gru_model,
+                sequence_context,
+                split["test_series"],
+                results_dir,
+                optimizer_name,
+            )
         elif model_name == "arima":
             result = _train_arima(split["train_series"], split["test_series"])
         elif model_name == "prophet":
@@ -352,6 +367,7 @@ def train_models(df, selected_models=None, max_points=5000, lookback=30):
             skipped = {
                 "model_key": model_name,
                 "model": MODEL_LABELS[model_name],
+                "optimizer": optimizer_name if model_name in SEQUENCE_MODELS else None,
                 "status": "skipped",
                 "message": "Model artifact could not be generated.",
             }
@@ -371,5 +387,4 @@ def train_models(df, selected_models=None, max_points=5000, lookback=30):
             )
         )
 
-    _write_manifest(results_dir, results)
     return results

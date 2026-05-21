@@ -1,76 +1,65 @@
-# 💰 Crypto Price Forecast ML
+# 🪙 Crypto Price Forecast ML
 
-A concise machine learning project for forecasting cryptocurrency prices using LSTM and GRU models. 📈🤖
+Lightweight ML project for cryptocurrency price forecasting with CLI + Streamlit.
 
-## ✨ Overview
-This repository contains code, data, and trained models for building time-series models to predict crypto price movements.
-- **Models:** LSTM and GRU implemented in TensorFlow / Keras.
-- **Data:** historical crypto statistics in `data/`.
-- **Notebook:** `crypto_price_forecast.ipynb` for exploration.
+## ✨ What This Project Does
+- Loads historical crypto data from `data/crypto_statistics_data.csv`.
+- Engineers technical indicators (EMA, MA, RSI, MACD, Bollinger Bands, volatility).
+- Trains multiple forecasting models and saves artifacts to `results/`.
+- Compares model performance with backtest metrics.
 
-## 📁 Repository Structure
-- `main.py` — entrypoint for running pipelines.
-- `src/data_loader.py` — data ingestion and preprocessing.
-- `src/feature_engineering.py` — feature generation and transformations.
-- `src/models.py` — model architectures (LSTM, GRU).
-- `src/training.py` — training and evaluation loops.
-- `data/crypto_statistics_data.csv` — raw dataset.
-- `results/` — trained models and outputs.
+## 🧠 Models Trained
+- `LSTM` (TensorFlow/Keras sequence model)
+- `GRU` (TensorFlow/Keras sequence model)
+- `ARIMA` (statsmodels)
+- `Prophet` (optional, if installed)
+- `Ensemble` (mean of available base-model predictions)
 
-## ⚡ Quick Setup
-1. Create a virtual environment:
-   python -m venv .venv
-2. Activate it (Windows PowerShell):
-   .venv\Scripts\Activate.ps1
-3. Install dependencies:
-   pip install -r requirements.txt
-4. Verify the environment:
-   python main.py --help
+## ⚙️ Optimizers / Training Setup
+- Supported optimizers for sequence models: `adam`, `rmsprop`
+- LSTM loss: `MSE`
+- GRU loss: `MSE`
+- ARIMA: statistical fit via `ARIMA(...).fit()` (no NN optimizer)
+- Prophet: model fit via `Prophet().fit()` (no Keras optimizer)
+- Sequence training config in `src/train.py`:
+  - epochs: `5`
+  - batch size: `128`
+  - validation split: `0.1`
 
-## 🧭 Usage
-- Run the full training pipeline:
-   python main.py --run-pipeline --models all
-- Launch the terminal menu:
-   python main.py
-- From the menu, choose option 3 to start the Streamlit UI in the current terminal.
-- Stop the CLI-launched Streamlit server with `Ctrl+C`.
-- Launch the Streamlit UI directly:
-   streamlit run src/streamlit.py
-- Open the exploratory notebook:
-   Use Jupyter to open `crypto_price_forecast.ipynb`.
+## 📁 Project Structure
+- `main.py` : CLI entrypoint
+- `src/data.py` : data loading + feature engineering
+- `src/models.py` : model definitions and builders
+- `src/train.py` : training pipeline + evaluation + artifact writing
+- `src/streamlit.py` : interactive dashboard
+- `results/` : `.keras` and `.json` model artifacts
 
-## 🌐 Streamlit UI
-The Streamlit app compares the saved models on a backtest split and projects the next 1-30 days from the latest history.
-- LSTM and GRU load from `results/lstm.keras` and `results/gru.keras`.
-- ARIMA, Prophet, and Ensemble now generate named result artifacts in `results/` during training.
-- The UI includes a forward-looking forecast horizon control and a separate backtest comparison view.
+## 🚀 Quick Start
+1. Create environment:
+   - `python -m venv .venv`
+2. Activate (PowerShell):
+   - `.venv\Scripts\Activate.ps1`
+3. Install deps:
+   - `pip install -r requirements.txt`
+4. Train all models:
+   - `python main.py --run-pipeline --models all`
 
-## 🧪 Data Notes
-- `data/crypto_statistics_data.csv` contains historical price and indicator features.
-- Ensure data is cleaned and aligned before training.
-- Use `src/data_loader.py` to customize windows and resampling.
+## 🖥️ Run App
+- CLI menu:
+  - `python main.py`
+- Streamlit directly:
+  - `streamlit run src/streamlit.py`
 
-## 🔧 Configuration
-- Hyperparameters are set in `src/training.py`; modify learning rate, batch size, epochs.
-- Model save/load paths use `results/` by default.
+## 📊 Outputs
+- Neural artifacts: `results/adam/lstm.keras`, `results/adam/gru.keras` (or `results/rmsprop/...`)
+- Statistical/summary artifacts:
+  - `results/<optimizer>/arima.json`
+  - `results/<optimizer>/prophet.json` (if Prophet available)
+  - `results/<optimizer>/ensemble.json`
 
-## 🏗️ Model Details
-- LSTM: stacked LSTM layers with dropout for regularization.
-- GRU: gated recurrent units optimized for faster convergence.
-- Both models output a regression forecast for the next price step.
+## 🧪 Metrics
+- RMSE, MAE, MAPE
 
-## 📊 Evaluation
-- Metrics: MSE, MAE, and directional accuracy.
-- Evaluation utilities are available in `src/training.py`.
-
-## 💾 Results
-- Trained neural models are saved in `results/` as `.keras` files with the model key as the filename.
-- Example files: `gru.keras`, `lstm.keras`.
-- Additional generated artifacts include `arima.json`, `prophet.json`, `ensemble.json`, and `manifest.json`.
-
-## 🛠️ Troubleshooting
-- If GPU is not available, training falls back to CPU.
-- On Windows, allow `Activate.ps1` via execution policy if blocked.
-- For CUDA errors, verify drivers and TensorFlow compatibility.
-- Do not start the Streamlit UI with `python src/streamlit.py`; use `streamlit run src/streamlit.py` instead.
- 
+## 🛠️ Notes
+- Prophet is optional; training skips it when not installed.
+- Training workflow in GitHub Actions retrains and commits `results/` on `main`.

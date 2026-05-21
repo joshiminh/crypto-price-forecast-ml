@@ -22,6 +22,7 @@ def _find_available_port(start_port=8501, max_port=8510):
             return port
     raise RuntimeError(f"No free port found in range {start_port}-{max_port}.")
 
+
 def terminate_program(message="Terminating..."):
     print(message)
     raise SystemExit(0)
@@ -57,6 +58,7 @@ def _launch_streamlit_app():
     except Exception as exc:
         print(f"Failed to launch Streamlit UI: {exc}")
 
+
 def _prompt_model_selection():
     from src.models import MODEL_ORDER, MODEL_LABELS, normalize_model_selection
 
@@ -82,6 +84,31 @@ def _prompt_model_selection():
 
         print("Invalid selection. Pick one model or 'all'.")
 
+
+def _prompt_optimizer_selection() -> str:
+    from src.models import SUPPORTED_OPTIMIZERS, normalize_optimizer
+
+    while True:
+        print("\nSelect optimizer")
+        for index, optimizer_name in enumerate(SUPPORTED_OPTIMIZERS, start=1):
+            print(f"{index}) {optimizer_name}")
+
+        choice = input("Choice: ").strip().lower()
+        if choice.isdigit():
+            numeric_choice = int(choice) - 1
+            if 0 <= numeric_choice < len(SUPPORTED_OPTIMIZERS):
+                return SUPPORTED_OPTIMIZERS[numeric_choice]
+
+        if choice in SUPPORTED_OPTIMIZERS:
+            return choice
+
+        normalized = normalize_optimizer(choice, default="")
+        if normalized:
+            return normalized
+
+        print("Invalid optimizer. Pick one listed option.")
+
+
 def interactive_menu():
     try:
         while True:
@@ -92,9 +119,11 @@ def interactive_menu():
             choice = input("Choice [1-3]: ").strip().lower()
 
             if choice == '1':
-                from src.training import run_pipeline
+                from src.train import run_pipeline
 
-                run_pipeline(_prompt_model_selection())
+                selected_models = _prompt_model_selection()
+                selected_optimizer = _prompt_optimizer_selection()
+                run_pipeline(selected_models, optimizer=selected_optimizer)
             elif choice == '2':
                 _launch_streamlit_app()
             elif choice in {'3', 'q', 'quit', 'exit'}:
@@ -104,28 +133,40 @@ def interactive_menu():
     except KeyboardInterrupt:
         terminate_program("\nInterrupted. Terminating...")
 
+
 def main():
     parser = argparse.ArgumentParser(description="Crypto Price Forecast CLI")
     parser.add_argument('--run-pipeline', action='store_true', help="Run the full pipeline (Load -> Engineer -> Train)")
     parser.add_argument('--models', help="Comma-separated models to train: all,lstm,gru,arima,prophet,ensemble")
-    
+    parser.add_argument('--optimizer', help="Optimizer for sequence models: adam,rmsprop")
+
     args = parser.parse_args()
-    
+
     if args.run_pipeline:
-        from src.models import normalize_model_selection
-        from src.training import run_pipeline
+        from src.models import normalize_model_selection, normalize_optimizer, SUPPORTED_OPTIMIZERS
+        from src.train import run_pipeline
 
         if args.models:
             selected_models = normalize_model_selection(args.models)
         else:
             selected_models = _prompt_model_selection()
+        if args.optimizer:
+            selected_optimizer = normalize_optimizer(args.optimizer)
+        elif args.models:
+            selected_optimizer = "adam"
+        else:
+            selected_optimizer = _prompt_optimizer_selection()
 
         if args.models and not selected_models:
             print("Invalid --models value.")
             raise SystemExit(1)
-        run_pipeline(selected_models)
+        if args.optimizer and args.optimizer.strip().lower() not in SUPPORTED_OPTIMIZERS:
+            print("Invalid --optimizer value.")
+            raise SystemExit(1)
+        run_pipeline(selected_models, optimizer=selected_optimizer)
     else:
         interactive_menu()
+
 
 if __name__ == "__main__":
     main()

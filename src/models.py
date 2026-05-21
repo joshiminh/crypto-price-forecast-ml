@@ -24,6 +24,7 @@ MODEL_LABELS = {
 }
 
 SEQUENCE_MODELS = ["lstm", "gru"]
+SUPPORTED_OPTIMIZERS = ["adam", "rmsprop"]
 
 
 def available_models(include_ensemble=True):
@@ -89,59 +90,73 @@ def resolve_menu_choice(choice):
         return [choice]
     return None
 
+
 def moving_average_forecast(series, test_len, window=10):
     """Simple moving average forecast."""
     return np.full(test_len, np.mean(series[-window:]))
+
 
 def gm11_forecast(series, n_steps):
     """Optimized GM(1,1) implementation."""
     x0 = np.array(series, dtype=float)
     if len(x0) > 500:
         x0 = x0[-500:]
-    
+
     n = len(x0)
     x1 = np.cumsum(x0)
     z1 = 0.5 * (x1[:-1] + x1[1:])
     B = np.column_stack((-z1, np.ones_like(z1)))
     Y = x0[1:]
-    
+
     try:
         params = np.linalg.lstsq(B, Y, rcond=None)[0]
         a, b = params
-        
+
         if abs(a) < 1e-10:
             return np.full(n_steps, np.mean(x0[-10:]))
-        
+
         def predict(k):
             return (x0[0] - b / a) * np.exp(-a * k) + b / a
-        
+
         forecasts = [(predict(n + i) - predict(n + i - 1)) for i in range(1, n_steps + 1)]
         return np.array(forecasts)
     except Exception:
         return np.full(n_steps, np.mean(x0[-10:]))
 
-def build_lstm_model(lookback):
+
+def normalize_optimizer(raw_value, default="adam"):
+    if raw_value is None:
+        return default
+    value = str(raw_value).strip().lower()
+    if value in SUPPORTED_OPTIMIZERS:
+        return value
+    return default
+
+
+def build_lstm_model(lookback, optimizer="adam"):
     model = Sequential([
         Input(shape=(lookback, 1)),
         LSTM(32, activation='tanh', return_sequences=False),
         Dense(1)
     ])
-    model.compile(optimizer='adam', loss='mse')
+    model.compile(optimizer=normalize_optimizer(optimizer), loss='mse')
     return model
 
-def build_gru_model(lookback):
+
+def build_gru_model(lookback, optimizer="adam"):
     model = Sequential([
         Input(shape=(lookback, 1)),
         GRU(32, activation='tanh', return_sequences=False),
         Dense(1)
     ])
-    model.compile(optimizer='adam', loss='mse')
+    model.compile(optimizer=normalize_optimizer(optimizer), loss='mse')
     return model
+
 
 def build_prophet_model():
     if not HAS_PROPHET:
         raise ImportError("Prophet is not installed")
-    
+
     model = Prophet(
         daily_seasonality=True,
         weekly_seasonality=True,

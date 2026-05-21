@@ -28,8 +28,7 @@ from streamlit.runtime import exists as streamlit_runtime_exists
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 
-from src.data_loader import load_data
-from src.feature_engineering import engineer_features
+from src.data import engineer_features, load_data
 
 logging.getLogger("cmdstanpy").setLevel(logging.WARNING)
 logging.getLogger("prophet").setLevel(logging.WARNING)
@@ -43,6 +42,7 @@ TEST_RATIO = 0.2
 DEFAULT_FORECAST_DAYS = 7
 MAX_FORECAST_DAYS = 30
 MODEL_OPTIONS = ["lstm", "gru", "arima", "prophet", "ensemble"]
+OPTIMIZER_OPTIONS = ["adam", "rmsprop"]
 MODEL_LABELS = {
     "lstm": "LSTM",
     "gru": "GRU",
@@ -51,10 +51,10 @@ MODEL_LABELS = {
     "ensemble": "Ensemble",
 }
 COLOR_MAP = {
-    "lstm": "#f59e0b",
-    "gru": "#fbbf24",
-    "arima": "#d97706",
-    "prophet": "#fde68a",
+    "lstm": "#22d3ee",
+    "gru": "#a78bfa",
+    "arima": "#f97316",
+    "prophet": "#34d399",
     "ensemble": "#f8fafc",
 }
 CHART_TEXT_COLOR = "#f8fafc"
@@ -413,22 +413,23 @@ def prepare_forward_context(df: pd.DataFrame, lookback: int = DEFAULT_LOOKBACK) 
     }
 
 
-def resolve_sequence_artifact(model_name: str) -> Path:
+def resolve_sequence_artifact(model_name: str, optimizer: str) -> Path:
+    model_root = RESULTS_DIR / optimizer
     candidates = [
-        RESULTS_DIR / f"{model_name}.keras",
-        RESULTS_DIR / f"{model_name}_model.keras",
+        model_root / f"{model_name}.keras",
+        model_root / f"{model_name}_model.keras",
     ]
     for candidate in candidates:
         if candidate.exists():
             return candidate
-    raise FileNotFoundError(f"Missing model file for {MODEL_LABELS[model_name]} in {RESULTS_DIR}")
+    raise FileNotFoundError(f"Missing model file for {MODEL_LABELS[model_name]} in {model_root}")
 
 
 @st.cache_resource(show_spinner=False)
-def load_sequence_model(model_name: str):
+def load_sequence_model(model_name: str, optimizer: str):
     from tensorflow.keras.models import load_model
 
-    return load_model(resolve_sequence_artifact(model_name))
+    return load_model(resolve_sequence_artifact(model_name, optimizer))
 
 
 def forecast_sequence_model(model: Any, context: dict[str, Any], test_series: np.ndarray) -> np.ndarray:
@@ -590,14 +591,14 @@ def build_future_result(model_name: str, predictions: np.ndarray, future_index, 
     }
 
 
-def run_predictions(selected_models: list[str], context: dict[str, Any]) -> dict[str, dict[str, Any]]:
+def run_predictions(selected_models: list[str], context: dict[str, Any], optimizer: str) -> dict[str, dict[str, Any]]:
     results: dict[str, dict[str, Any]] = {}
     test_series = context["test_series"]
 
     for model_name in selected_models:
         if model_name in {"lstm", "gru"}:
             try:
-                model = load_sequence_model(model_name)
+                model = load_sequence_model(model_name, optimizer)
                 predictions = forecast_sequence_model(model, context, test_series)
                 results[model_name] = build_result(model_name, np.asarray(test_series, dtype=float), predictions)
             except Exception as exc:
@@ -633,14 +634,19 @@ def run_predictions(selected_models: list[str], context: dict[str, Any]) -> dict
     return results
 
 
-def run_future_forecasts(selected_models: list[str], context: dict[str, Any], forecast_days: int) -> dict[str, dict[str, Any]]:
+def run_future_forecasts(
+    selected_models: list[str],
+    context: dict[str, Any],
+    forecast_days: int,
+    optimizer: str,
+) -> dict[str, dict[str, Any]]:
     results: dict[str, dict[str, Any]] = {}
     future_index = build_future_index(context["dates"], forecast_days)
 
     for model_name in selected_models:
         if model_name in {"lstm", "gru"}:
             try:
-                model = load_sequence_model(model_name)
+                model = load_sequence_model(model_name, optimizer)
                 predictions = forecast_sequence_future(model, context, forecast_days)
                 results[model_name] = build_future_result(model_name, predictions, future_index, context["last_close"])
             except Exception as exc:
@@ -728,7 +734,8 @@ def build_comparison_figure(results: dict[str, dict[str, Any]], test_dates: np.n
                 x=x_values[-len(result["predictions"]):],
                 y=result["predictions"],
                 name=result["model"],
-                line=dict(color=COLOR_MAP.get(model_name, "#666666"), width=2),
+                mode="lines",
+                line=dict(color=COLOR_MAP.get(model_name, "#666666"), width=2.2),
             ),
             row=1,
             col=1,
@@ -784,18 +791,36 @@ def build_future_figure(results: dict[str, dict[str, Any]], forward_context: dic
                 y=anchor_and_future_y,
                 name=result["model"],
                 mode="lines+markers",
-                line=dict(color=COLOR_MAP.get(model_name, "#666666"), width=2.5),
-                marker=dict(size=5),
+                line=dict(color=COLOR_MAP.get(model_name, "#666666"), width=2.8, shape="spline", smoothing=0.5),
+                marker=dict(size=6, symbol="circle"),
+                hovertemplate=f"{result['model']}<br>%{{x}}<br>%{{y:.4f}}<extra></extra>",
+            )
+        )
+        figure.add_trace(
+            go.Scatter(
+                x=[anchor_and_future_x[-1]],
+                y=[anchor_and_future_y[-1]],
+                mode="markers+text",
+                text=[f"{anchor_and_future_y[-1]:.2f}"],
+                textposition="top center",
+                showlegend=False,
+                marker=dict(
+                    color=COLOR_MAP.get(model_name, "#666666"),
+                    size=10,
+                    line=dict(color="#111827", width=1),
+                ),
+                hovertemplate=f"{result['model']} final<br>%{{x}}<br>%{{y:.4f}}<extra></extra>",
             )
         )
 
-    figure.add_hline(y=last_close, line_dash="dot", line_color="rgba(203,213,225,0.5)")
+    figure.add_hline(y=last_close, line_dash="dot", line_color="rgba(203,213,225,0.55)")
     figure.update_layout(
-        height=520,
-        margin=dict(l=10, r=10, t=30, b=10),
+        title="Forward Forecast Comparison",
+        height=560,
+        margin=dict(l=10, r=10, t=40, b=10),
     )
-    figure.update_xaxes(title_text="Forecast horizon", showgrid=False)
-    figure.update_yaxes(title_text="Projected close", gridcolor=CHART_GRID_COLOR)
+    figure.update_xaxes(title_text="Forecast Horizon", showgrid=False)
+    figure.update_yaxes(title_text="Projected Close", gridcolor=CHART_GRID_COLOR)
     return apply_chart_theme(figure)
 
 
@@ -880,7 +905,7 @@ def render_hero(selected_crypto: str, selected_models: list[str], forecast_days:
         f"""
         <div class="hero-shell">
             <div class="hero-kicker">Forecast Studio</div>
-            <h1 class="hero-title">₿ Crypto Price Forecast</h1>
+            <h1 class="hero-title">Crypto Price Forecast</h1>
             <p class="hero-copy">
                 Compare saved model performance on the latest backtest split, then project the next {forecast_days} days
                 for <strong>{selected_crypto}</strong>.
@@ -966,21 +991,27 @@ def main() -> None:
             unsafe_allow_html=True,
         )
         selected_crypto = st.selectbox(
-            "🪙 Crypto",
+            "Crypto",
             options=[code for code, _ in crypto_options],
             index=next((i for i, (code, _) in enumerate(crypto_options) if code == default_crypto), 0),
             format_func=lambda crypto_code: next(label for code, label in crypto_options if code == crypto_code),
         )
         selected_models = st.multiselect(
-            "🤖 Models",
+            "Models",
             options=MODEL_OPTIONS,
             default=["lstm", "gru", "arima", "prophet", "ensemble"],
             format_func=lambda model_name: MODEL_LABELS[model_name],
         )
-        forecast_days = st.slider("📅 Days ahead", min_value=1, max_value=MAX_FORECAST_DAYS, value=DEFAULT_FORECAST_DAYS)
+        selected_optimizer = st.selectbox(
+            "Optimizer",
+            options=OPTIMIZER_OPTIONS,
+            index=0,
+            help="Sequence models are loaded from results/<optimizer>/",
+        )
+        forecast_days = st.slider("Days ahead", min_value=1, max_value=MAX_FORECAST_DAYS, value=DEFAULT_FORECAST_DAYS)
         st.caption(f"Lookback window: {DEFAULT_LOOKBACK} points")
         st.caption(f"Backtest split: {int(TEST_RATIO * 100)}%")
-        submit = st.button("🚀 Run Forecast Studio", type="primary")
+        submit = st.button("Run Forecast Studio", type="primary")
 
     df = filter_frame_by_crypto(df, selected_crypto)
     evaluation_context = prepare_split(df)
@@ -988,7 +1019,10 @@ def main() -> None:
     render_hero(selected_crypto, selected_models, forecast_days)
 
     render_metric_cards(df, evaluation_context, forecast_days)
-    st.markdown('<p class="section-note">⚡ The controls drive both the backtest comparison and the forward-looking forecast view.</p>', unsafe_allow_html=True)
+    st.markdown(
+        '<p class="section-note">The controls drive both the backtest comparison and the forward-looking forecast view.</p>',
+        unsafe_allow_html=True,
+    )
 
     if evaluation_context is None or forward_context is None:
         st.error("Not enough data to build the prediction views.")
@@ -1004,8 +1038,8 @@ def main() -> None:
         return
 
     with st.spinner("Loading saved models, scoring the backtest split, and building the forward forecast..."):
-        backtest_results = run_predictions(selected_models, evaluation_context)
-        future_results = run_future_forecasts(selected_models, forward_context, forecast_days)
+        backtest_results = run_predictions(selected_models, evaluation_context, selected_optimizer)
+        future_results = run_future_forecasts(selected_models, forward_context, forecast_days, selected_optimizer)
 
     skipped_messages = [
         f"{result['model']}: {result.get('message', 'Skipped')}"
@@ -1021,16 +1055,16 @@ def main() -> None:
     tabs = st.tabs(["Forward Outlook", "Backtest", "Metrics"])
 
     with tabs[0]:
-        st.subheader(f"🔮 {forecast_days}-Day Forward Outlook")
+        st.subheader(f"{forecast_days}-Day Forward Outlook")
         st.plotly_chart(build_future_figure(future_results, forward_context), width="stretch")
         render_forward_table(future_results)
 
     with tabs[1]:
-        st.subheader("📊 Historical Backtest Comparison")
+        st.subheader("Historical Backtest Comparison")
         st.plotly_chart(build_comparison_figure(backtest_results, evaluation_context["test_dates"]), width="stretch")
 
     with tabs[2]:
-        st.subheader("🧮 Model Metrics")
+        st.subheader("Model Metrics")
         render_metrics_table(backtest_results)
 
 
