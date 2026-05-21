@@ -51,45 +51,51 @@ MODEL_LABELS = {
     "ensemble": "Ensemble",
 }
 COLOR_MAP = {
-    "lstm": "#0f766e",
-    "gru": "#f97316",
-    "arima": "#2563eb",
-    "prophet": "#dc2626",
-    "ensemble": "#111827",
+    "lstm": "#f59e0b",
+    "gru": "#fbbf24",
+    "arima": "#d97706",
+    "prophet": "#fde68a",
+    "ensemble": "#f8fafc",
 }
-CHART_TEXT_COLOR = "#e5e7eb"
-CHART_GRID_COLOR = "rgba(148,163,184,0.22)"
+CHART_TEXT_COLOR = "#f8fafc"
+CHART_GRID_COLOR = "rgba(245,158,11,0.20)"
 
 
 def apply_app_styles() -> None:
     st.markdown(
         """
         <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap');
+        html, body, [class*="css"]  {
+            font-family: 'Space Grotesk', sans-serif;
+        }
         .stApp {
             background:
-                radial-gradient(circle at top left, rgba(20,184,166,0.12), transparent 35%),
-                radial-gradient(circle at top right, rgba(249,115,22,0.10), transparent 30%),
-                linear-gradient(180deg, #020617 0%, #0f172a 60%, #111827 100%);
-            color: #e5e7eb;
+                radial-gradient(circle at top left, rgba(245,158,11,0.15), transparent 35%),
+                radial-gradient(circle at top right, rgba(234,179,8,0.10), transparent 30%),
+                linear-gradient(180deg, #000000 0%, #050505 55%, #0a0a0a 100%);
+            color: #f5f5f5;
         }
         .block-container {
             padding-top: 2rem;
             padding-bottom: 2rem;
+            max-width: 1280px;
         }
         .hero-shell {
-            background: linear-gradient(135deg, rgba(15,23,42,0.86) 0%, rgba(30,41,59,0.84) 50%, rgba(51,65,85,0.86) 100%);
-            border: 1px solid rgba(148, 163, 184, 0.22);
+            background: linear-gradient(135deg, rgba(8,8,8,0.95) 0%, rgba(20,20,20,0.93) 55%, rgba(34,24,10,0.9) 100%);
+            border: 1px solid rgba(245, 158, 11, 0.35);
             border-radius: 28px;
             padding: 2rem 2.2rem;
             box-shadow: 0 20px 45px rgba(2, 6, 23, 0.45);
             margin-bottom: 1.2rem;
+            animation: fadeUp 360ms ease-out;
         }
         .hero-kicker {
             display: inline-block;
             padding: 0.35rem 0.7rem;
             border-radius: 999px;
-            background: rgba(20, 184, 166, 0.20);
-            color: #99f6e4;
+            background: rgba(245, 158, 11, 0.18);
+            color: #fcd34d;
             font-size: 0.78rem;
             font-weight: 700;
             letter-spacing: 0.08em;
@@ -100,22 +106,56 @@ def apply_app_styles() -> None:
             font-size: 2.4rem;
             line-height: 1.05;
             color: #f8fafc;
+            letter-spacing: -0.02em;
         }
         .hero-copy {
             margin: 0;
             max-width: 56rem;
-            color: #cbd5e1;
+            color: #fde68a;
             font-size: 1rem;
         }
         .metric-card {
-            background: rgba(15, 23, 42, 0.76);
-            border: 1px solid rgba(148, 163, 184, 0.18);
+            background: rgba(10, 10, 10, 0.85);
+            border: 1px solid rgba(245, 158, 11, 0.26);
             border-radius: 22px;
             padding: 1rem 1.1rem;
             box-shadow: 0 10px 30px rgba(2, 6, 23, 0.3);
         }
+        .hero-chip-row {
+            margin-top: 1rem;
+            display: flex;
+            gap: 0.55rem;
+            flex-wrap: wrap;
+        }
+        .hero-chip {
+            border: 1px solid rgba(245, 158, 11, 0.45);
+            background: rgba(30, 20, 5, 0.75);
+            color: #fef3c7;
+            border-radius: 999px;
+            padding: 0.28rem 0.72rem;
+            font-size: 0.8rem;
+        }
+        .sidebar-shell {
+            background: rgba(12, 12, 12, 0.78);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 16px;
+            padding: 0.75rem 0.8rem 0.8rem 0.8rem;
+            margin-bottom: 0.8rem;
+        }
+        .sidebar-eyebrow {
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            font-size: 0.78rem;
+            color: #fbbf24;
+            margin-bottom: 0.2rem;
+        }
+        .sidebar-copy {
+            color: #fde68a;
+            font-size: 0.9rem;
+            margin: 0;
+        }
         .metric-label {
-            color: #94a3b8;
+            color: #fbbf24;
             font-size: 0.82rem;
             text-transform: uppercase;
             letter-spacing: 0.06em;
@@ -128,17 +168,17 @@ def apply_app_styles() -> None:
             line-height: 1.05;
         }
         .metric-note {
-            color: #cbd5e1;
+            color: #fde68a;
             font-size: 0.9rem;
             margin-top: 0.35rem;
         }
         .section-note {
-            color: #cbd5e1;
+            color: #fde68a;
             margin: 0.2rem 0 1rem 0;
         }
         .spotlight-card {
-            background: linear-gradient(180deg, rgba(30,41,59,0.82), rgba(15,23,42,0.82));
-            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92));
+            border: 1px solid rgba(245, 158, 11, 0.28);
             border-radius: 24px;
             padding: 1.1rem 1.2rem;
             min-height: 150px;
@@ -147,7 +187,7 @@ def apply_app_styles() -> None:
             font-size: 0.82rem;
             text-transform: uppercase;
             letter-spacing: 0.08em;
-            color: #94a3b8;
+            color: #fbbf24;
         }
         .spotlight-value {
             font-size: 1.9rem;
@@ -156,24 +196,24 @@ def apply_app_styles() -> None:
             margin: 0.4rem 0 0.35rem 0;
         }
         .spotlight-copy {
-            color: #cbd5e1;
+            color: #fde68a;
             font-size: 0.92rem;
         }
         [data-testid="stSidebar"] {
-            background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(17,24,39,0.96));
-            border-right: 1px solid rgba(148, 163, 184, 0.2);
+            background: linear-gradient(180deg, rgba(0,0,0,0.98), rgba(12,12,12,0.98));
+            border-right: 1px solid rgba(245, 158, 11, 0.28);
         }
         [data-testid="stSidebar"] * {
             color: #e5e7eb;
         }
         [data-baseweb="select"] > div,
         [data-baseweb="tag"] {
-            background-color: rgba(30,41,59,0.9) !important;
-            border-color: rgba(148,163,184,0.35) !important;
-            color: #e5e7eb !important;
+            background-color: rgba(20,20,20,0.95) !important;
+            border-color: rgba(245,158,11,0.45) !important;
+            color: #f8fafc !important;
         }
         [data-baseweb="slider"] [role="slider"] {
-            background: #14b8a6;
+            background: #f59e0b;
         }
         .stTabs [data-baseweb="tab-list"] {
             gap: 0.45rem;
@@ -181,13 +221,20 @@ def apply_app_styles() -> None:
         .stTabs [data-baseweb="tab"] {
             border-radius: 999px;
             padding: 0.65rem 1rem;
-            background: rgba(30,41,59,0.8);
-            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: rgba(18,18,18,0.9);
+            border: 1px solid rgba(245, 158, 11, 0.25);
         }
         .stTabs [aria-selected="true"] {
-            background: #14b8a6 !important;
-            color: #042f2e !important;
+            background: #f59e0b !important;
+            color: #1a1204 !important;
             font-weight: 700;
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        code, kbd, pre {
+            font-family: 'JetBrains Mono', monospace;
         }
         </style>
         """,
@@ -198,14 +245,14 @@ def apply_app_styles() -> None:
 def apply_chart_theme(figure: go.Figure) -> go.Figure:
     figure.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(15,23,42,0.86)",
+        plot_bgcolor="rgba(10,10,10,0.92)",
         font=dict(color=CHART_TEXT_COLOR),
         title_font=dict(color=CHART_TEXT_COLOR),
         legend=dict(
             orientation="h",
             font=dict(color=CHART_TEXT_COLOR),
-            bgcolor="rgba(15,23,42,0.45)",
-            bordercolor="rgba(148,163,184,0.2)",
+            bgcolor="rgba(10,10,10,0.75)",
+            bordercolor="rgba(245,158,11,0.28)",
             borderwidth=1,
         ),
     )
@@ -825,6 +872,26 @@ def render_spotlight_cards(future_results: dict[str, dict[str, Any]], backtest_r
         )
 
 
+def render_hero(selected_crypto: str, selected_models: list[str], forecast_days: int) -> None:
+    model_tags = "".join(f'<span class="hero-chip">{MODEL_LABELS[model_name]}</span>' for model_name in selected_models[:5])
+    if len(selected_models) > 5:
+        model_tags += f'<span class="hero-chip">+{len(selected_models) - 5} more</span>'
+    st.markdown(
+        f"""
+        <div class="hero-shell">
+            <div class="hero-kicker">Forecast Studio</div>
+            <h1 class="hero-title">₿ Crypto Price Forecast</h1>
+            <p class="hero-copy">
+                Compare saved model performance on the latest backtest split, then project the next {forecast_days} days
+                for <strong>{selected_crypto}</strong>.
+            </p>
+            <div class="hero-chip-row">{model_tags}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_metrics_table(results: dict[str, dict[str, Any]]) -> None:
     rows = []
     for model_name in MODEL_OPTIONS:
@@ -876,19 +943,6 @@ def main() -> None:
     apply_app_styles()
 
     df = load_prepared_frame()
-    st.markdown(
-        """
-        <div class="hero-shell">
-            <div class="hero-kicker">Forecast Studio</div>
-            <h1 class="hero-title">Crypto Price Forecast</h1>
-            <p class="hero-copy">
-                Compare saved model performance on the latest backtest split, then project the next 1–30 days from the
-                most recent market history in the same workspace.
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
 
     if df.empty:
         st.error("No data loaded.")
@@ -902,30 +956,39 @@ def main() -> None:
     default_crypto = "BTC/USD" if any(code == "BTC/USD" for code, _ in crypto_options) else crypto_options[0][0]
 
     with st.sidebar:
-        st.header("Forecast Controls")
+        st.markdown(
+            """
+            <div class="sidebar-shell">
+                <div class="sidebar-eyebrow">Control Room</div>
+                <p class="sidebar-copy">Pick asset, models, and horizon, then run the full comparison view.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         selected_crypto = st.selectbox(
-            "Crypto",
+            "🪙 Crypto",
             options=[code for code, _ in crypto_options],
             index=next((i for i, (code, _) in enumerate(crypto_options) if code == default_crypto), 0),
             format_func=lambda crypto_code: next(label for code, label in crypto_options if code == crypto_code),
         )
         selected_models = st.multiselect(
-            "Models",
+            "🤖 Models",
             options=MODEL_OPTIONS,
             default=["lstm", "gru", "arima", "prophet", "ensemble"],
             format_func=lambda model_name: MODEL_LABELS[model_name],
         )
-        forecast_days = st.slider("Days ahead", min_value=1, max_value=MAX_FORECAST_DAYS, value=DEFAULT_FORECAST_DAYS)
+        forecast_days = st.slider("📅 Days ahead", min_value=1, max_value=MAX_FORECAST_DAYS, value=DEFAULT_FORECAST_DAYS)
         st.caption(f"Lookback window: {DEFAULT_LOOKBACK} points")
         st.caption(f"Backtest split: {int(TEST_RATIO * 100)}%")
-        submit = st.button("Run Forecast Studio", type="primary")
+        submit = st.button("🚀 Run Forecast Studio", type="primary")
 
     df = filter_frame_by_crypto(df, selected_crypto)
     evaluation_context = prepare_split(df)
     forward_context = prepare_forward_context(df)
+    render_hero(selected_crypto, selected_models, forecast_days)
 
     render_metric_cards(df, evaluation_context, forecast_days)
-    st.markdown('<p class="section-note">The controls drive both the backtest comparison and the forward-looking forecast view.</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section-note">⚡ The controls drive both the backtest comparison and the forward-looking forecast view.</p>', unsafe_allow_html=True)
 
     if evaluation_context is None or forward_context is None:
         st.error("Not enough data to build the prediction views.")
@@ -958,16 +1021,16 @@ def main() -> None:
     tabs = st.tabs(["Forward Outlook", "Backtest", "Metrics"])
 
     with tabs[0]:
-        st.subheader(f"{forecast_days}-Day Forward Outlook")
+        st.subheader(f"🔮 {forecast_days}-Day Forward Outlook")
         st.plotly_chart(build_future_figure(future_results, forward_context), width="stretch")
         render_forward_table(future_results)
 
     with tabs[1]:
-        st.subheader("Historical Backtest Comparison")
+        st.subheader("📊 Historical Backtest Comparison")
         st.plotly_chart(build_comparison_figure(backtest_results, evaluation_context["test_dates"]), width="stretch")
 
     with tabs[2]:
-        st.subheader("Model Metrics")
+        st.subheader("🧮 Model Metrics")
         render_metrics_table(backtest_results)
 
 

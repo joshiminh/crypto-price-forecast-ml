@@ -58,44 +58,46 @@ def _launch_streamlit_app():
         print(f"Failed to launch Streamlit UI: {exc}")
 
 def _prompt_model_selection():
-    from src.models import menu_text, normalize_model_selection, resolve_menu_choice
+    from src.models import MODEL_ORDER, MODEL_LABELS, normalize_model_selection
 
     while True:
-        print(menu_text())
-        choice = input("Select: ").strip().lower()
+        print("\nSelect model scope")
+        print("1) All models")
+        for index, model_name in enumerate(MODEL_ORDER, start=2):
+            print(f"{index}) {MODEL_LABELS[model_name]}")
+
+        choice = input("Choice: ").strip().lower()
         if choice in {"1", "all"}:
             return normalize_model_selection("all")
-        selected_models = resolve_menu_choice(choice)
-        if selected_models is not None:
-            return selected_models
-        print("Invalid model choice.")
+
+        if choice.isdigit():
+            numeric_choice = int(choice)
+            mapped_index = numeric_choice - 2
+            if 0 <= mapped_index < len(MODEL_ORDER):
+                return normalize_model_selection(MODEL_ORDER[mapped_index])
+
+        normalized = normalize_model_selection(choice)
+        if normalized and len(normalized) == 1:
+            return normalized
+
+        print("Invalid selection. Pick one model or 'all'.")
 
 def interactive_menu():
     try:
         while True:
             print("\nCrypto Price Forecast")
             print("1) Train models")
-            print("2) Load data")
-            print("3) Launch Streamlit UI (runs here, stop with Ctrl+C)")
-            print("4) Exit")
-            choice = input("Choice [1-4]: ").strip().lower()
+            print("2) Run Streamlit")
+            print("3) Exit")
+            choice = input("Choice [1-3]: ").strip().lower()
 
             if choice == '1':
                 from src.training import run_pipeline
 
                 run_pipeline(_prompt_model_selection())
             elif choice == '2':
-                from src.data_loader import load_data
-
-                df = load_data()
-                if not df.empty:
-                    print(f"Loaded: {df.shape[0]} rows x {df.shape[1]} cols")
-                    print(df.head(3).to_string(index=False))
-                else:
-                    print("No data loaded.")
-            elif choice == '3':
                 _launch_streamlit_app()
-            elif choice in {'4', 'q', 'quit', 'exit'}:
+            elif choice in {'3', 'q', 'quit', 'exit'}:
                 terminate_program()
             else:
                 print("Invalid choice.")
@@ -113,7 +115,11 @@ def main():
         from src.models import normalize_model_selection
         from src.training import run_pipeline
 
-        selected_models = normalize_model_selection(args.models)
+        if args.models:
+            selected_models = normalize_model_selection(args.models)
+        else:
+            selected_models = _prompt_model_selection()
+
         if args.models and not selected_models:
             print("Invalid --models value.")
             raise SystemExit(1)
