@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from pathlib import Path
 import sys
 from typing import Any
 import warnings
+
+if sys.platform.startswith("win"):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
@@ -52,13 +56,20 @@ MODEL_LABELS = {
 }
 COLOR_MAP = {
     "lstm": "#22d3ee",
-    "gru": "#a78bfa",
-    "arima": "#f97316",
+    "gru": "#60a5fa",
+    "arima": "#fb923c",
     "prophet": "#34d399",
     "ensemble": "#f8fafc",
 }
 CHART_TEXT_COLOR = "#f8fafc"
-CHART_GRID_COLOR = "rgba(245,158,11,0.20)"
+CHART_GRID_COLOR = "rgba(148,163,184,0.18)"
+PRICE_LINE_COLOR = "#2dd4bf"
+PRICE_FILL_COLOR = "rgba(45,212,191,0.10)"
+MA_COLOR_MAP = {
+    20: "#f59e0b",
+    50: "#38bdf8",
+    200: "#f97316",
+}
 
 
 def apply_app_styles() -> None:
@@ -108,6 +119,21 @@ def apply_app_styles() -> None:
             color: #f8fafc;
             letter-spacing: -0.02em;
         }
+        .btc-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.9rem;
+            height: 1.9rem;
+            margin-right: 0.55rem;
+            border-radius: 999px;
+            border: 1px solid rgba(245, 158, 11, 0.55);
+            background: radial-gradient(circle at 30% 30%, #fbbf24, #f59e0b 62%, #b45309 100%);
+            color: #111827;
+            font-size: 1.2rem;
+            font-weight: 700;
+            vertical-align: text-bottom;
+        }
         .hero-copy {
             margin: 0;
             max-width: 56rem;
@@ -137,10 +163,10 @@ def apply_app_styles() -> None:
         }
         .sidebar-shell {
             background: rgba(12, 12, 12, 0.78);
-            border: 1px solid rgba(245, 158, 11, 0.3);
+            border: 1px solid rgba(148,163,184,0.22);
             border-radius: 16px;
-            padding: 0.75rem 0.8rem 0.8rem 0.8rem;
-            margin-bottom: 0.8rem;
+            padding: 0.7rem 0.75rem 0.72rem 0.75rem;
+            margin-bottom: 0.65rem;
         }
         .sidebar-eyebrow {
             text-transform: uppercase;
@@ -201,7 +227,7 @@ def apply_app_styles() -> None:
         }
         [data-testid="stSidebar"] {
             background: linear-gradient(180deg, rgba(0,0,0,0.98), rgba(12,12,12,0.98));
-            border-right: 1px solid rgba(245, 158, 11, 0.28);
+            border-right: 1px solid rgba(148,163,184,0.20);
         }
         [data-testid="stSidebar"] * {
             color: #e5e7eb;
@@ -215,8 +241,12 @@ def apply_app_styles() -> None:
         [data-baseweb="slider"] [role="slider"] {
             background: #f59e0b;
         }
+        .stTabs {
+            margin-top: 0.75rem;
+        }
         .stTabs [data-baseweb="tab-list"] {
             gap: 0.45rem;
+            margin-bottom: 0.9rem;
         }
         .stTabs [data-baseweb="tab"] {
             border-radius: 999px;
@@ -252,8 +282,13 @@ def apply_chart_theme(figure: go.Figure) -> go.Figure:
             orientation="h",
             font=dict(color=CHART_TEXT_COLOR),
             bgcolor="rgba(10,10,10,0.75)",
-            bordercolor="rgba(245,158,11,0.28)",
+            bordercolor="rgba(148,163,184,0.24)",
             borderwidth=1,
+        ),
+        hoverlabel=dict(
+            bgcolor="rgba(10,10,10,0.95)",
+            bordercolor="rgba(148,163,184,0.35)",
+            font=dict(color=CHART_TEXT_COLOR),
         ),
     )
     figure.update_xaxes(
@@ -681,25 +716,90 @@ def run_future_forecasts(
     return results
 
 
-def build_price_history_figure(df: pd.DataFrame) -> go.Figure:
-    figure = go.Figure()
+def build_price_history_figure(
+    df: pd.DataFrame,
+    selected_crypto: str,
+    moving_averages: list[int],
+    show_volume: bool,
+) -> go.Figure:
+    has_volume = show_volume and "volume" in df.columns
+    figure = make_subplots(specs=[[{"secondary_y": has_volume}]]) if has_volume else go.Figure()
     x_values = pd.to_datetime(df["date"]) if "date" in df.columns else np.arange(len(df))
-    figure.add_trace(
-        go.Scatter(
-            x=x_values,
-            y=df["close"].astype(float),
-            name="Close",
-            line=dict(color="#0f766e", width=2.2),
-            fill="tozeroy",
-            fillcolor="rgba(15,118,110,0.08)",
-        )
+    close_series = df["close"].astype(float)
+    close_trace = go.Scatter(
+        x=x_values,
+        y=close_series,
+        name="Close",
+        mode="lines",
+        line=dict(color=PRICE_LINE_COLOR, width=2.3),
+        fill="tozeroy",
+        fillcolor=PRICE_FILL_COLOR,
+        hovertemplate="Date: %{x|%Y-%m-%d}<br>Close: $%{y:,.2f}<extra></extra>",
     )
+    if has_volume:
+        figure.add_trace(close_trace, secondary_y=False)
+    else:
+        figure.add_trace(close_trace)
+
+    for window in moving_averages:
+        if len(df) >= window:
+            ma_series = close_series.rolling(window=window).mean()
+            ma_trace = go.Scatter(
+                x=x_values,
+                y=ma_series,
+                name=f"MA{window}",
+                mode="lines",
+                line=dict(color=MA_COLOR_MAP.get(window, "#94a3b8"), width=1.7, dash="dash"),
+                hovertemplate=f"Date: %{{x|%Y-%m-%d}}<br>MA{window}: $%{{y:,.2f}}<extra></extra>",
+            )
+            if has_volume:
+                figure.add_trace(ma_trace, secondary_y=False)
+            else:
+                figure.add_trace(ma_trace)
+
+    if has_volume:
+        figure.add_trace(
+            go.Bar(
+                x=x_values,
+                y=df["volume"].astype(float),
+                name="Volume",
+                marker_color="rgba(96,165,250,0.22)",
+                opacity=0.35,
+                hovertemplate="Date: %{x|%Y-%m-%d}<br>Volume: %{y:,.0f}<extra></extra>",
+            ),
+            secondary_y=True,
+        )
+
     figure.update_layout(
+        title=f"{selected_crypto} Price History",
         height=340,
-        margin=dict(l=10, r=10, t=20, b=10),
+        margin=dict(l=10, r=10, t=56, b=10),
+        hovermode="x unified",
+        xaxis=dict(
+            rangeselector=dict(
+                buttons=[
+                    dict(count=1, label="1M", step="month", stepmode="backward"),
+                    dict(count=3, label="3M", step="month", stepmode="backward"),
+                    dict(count=6, label="6M", step="month", stepmode="backward"),
+                    dict(count=1, label="1Y", step="year", stepmode="backward"),
+                    dict(step="all", label="All"),
+                ],
+                bgcolor="rgba(15,23,42,0.95)",
+                activecolor="rgba(45,212,191,0.25)",
+                bordercolor="rgba(148,163,184,0.25)",
+                font=dict(color=CHART_TEXT_COLOR),
+            ),
+        ),
     )
     figure.update_xaxes(showgrid=False)
-    figure.update_yaxes(showgrid=True, gridcolor=CHART_GRID_COLOR)
+    figure.update_yaxes(
+        showgrid=True,
+        gridcolor=CHART_GRID_COLOR,
+        tickprefix="$",
+        tickformat=",.0f",
+    )
+    if has_volume:
+        figure.update_yaxes(showgrid=False, secondary_y=True, tickformat=",.0f", title_text="Volume")
     return apply_chart_theme(figure)
 
 
@@ -905,7 +1005,7 @@ def render_hero(selected_crypto: str, selected_models: list[str], forecast_days:
         f"""
         <div class="hero-shell">
             <div class="hero-kicker">Forecast Studio</div>
-            <h1 class="hero-title">Crypto Price Forecast</h1>
+            <h1 class="hero-title"><span class="btc-icon">₿</span>Crypto Price Forecast</h1>
             <p class="hero-copy">
                 Compare saved model performance on the latest backtest split, then project the next {forecast_days} days
                 for <strong>{selected_crypto}</strong>.
@@ -964,7 +1064,7 @@ def render_forward_table(results: dict[str, dict[str, Any]]) -> None:
 
 
 def main() -> None:
-    st.set_page_config(page_title="Crypto Forecast Studio", layout="wide")
+    st.set_page_config(page_title="₿ Crypto Forecast Studio", layout="wide")
     apply_app_styles()
 
     df = load_prepared_frame()
@@ -1009,6 +1109,13 @@ def main() -> None:
             help="Sequence models are loaded from results/<optimizer>/",
         )
         forecast_days = st.slider("Days ahead", min_value=1, max_value=MAX_FORECAST_DAYS, value=DEFAULT_FORECAST_DAYS)
+        moving_average_windows = st.multiselect(
+            "Moving averages",
+            options=[20, 50, 200],
+            default=[20, 50],
+            help="Overlay moving average lines on the price history chart.",
+        )
+        show_volume_overlay = st.checkbox("Show volume overlay", value=False)
         st.caption(f"Lookback window: {DEFAULT_LOOKBACK} points")
         st.caption(f"Backtest split: {int(TEST_RATIO * 100)}%")
         submit = st.button("Run Forecast Studio", type="primary")
@@ -1018,19 +1125,16 @@ def main() -> None:
     forward_context = prepare_forward_context(df)
     render_hero(selected_crypto, selected_models, forecast_days)
 
-    render_metric_cards(df, evaluation_context, forecast_days)
-    st.markdown(
-        '<p class="section-note">The controls drive both the backtest comparison and the forward-looking forecast view.</p>',
-        unsafe_allow_html=True,
-    )
-
     if evaluation_context is None or forward_context is None:
         st.error("Not enough data to build the prediction views.")
         return
 
     if not submit:
         st.info("Choose one or more models, set the forecast horizon, then click Run Forecast Studio.")
-        st.plotly_chart(build_price_history_figure(df), width="stretch")
+        st.plotly_chart(
+            build_price_history_figure(df, selected_crypto, moving_average_windows, show_volume_overlay),
+            width="stretch",
+        )
         return
 
     if not selected_models:

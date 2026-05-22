@@ -119,10 +119,11 @@ def interactive_menu():
             choice = input("Choice [1-3]: ").strip().lower()
 
             if choice == '1':
-                from src.train import run_pipeline
-
                 selected_models = _prompt_model_selection()
                 selected_optimizer = _prompt_optimizer_selection()
+                print("Loading training pipeline...", flush=True)
+                from src.train import run_pipeline
+
                 run_pipeline(selected_models, optimizer=selected_optimizer)
             elif choice == '2':
                 _launch_streamlit_app()
@@ -136,36 +137,56 @@ def interactive_menu():
 
 def main():
     parser = argparse.ArgumentParser(description="Crypto Price Forecast CLI")
-    parser.add_argument('--run-pipeline', action='store_true', help="Run the full pipeline (Load -> Engineer -> Train)")
-    parser.add_argument('--models', help="Comma-separated models to train: all,lstm,gru,arima,prophet,ensemble")
-    parser.add_argument('--optimizer', help="Optimizer for sequence models: adam,rmsprop")
+    subparsers = parser.add_subparsers(dest="command")
+
+    train_parser = subparsers.add_parser("train", help="Run training pipeline")
+    train_parser.add_argument("--models", help="Comma-separated models: all,lstm,gru,arima,prophet,ensemble")
+    train_parser.add_argument("--optimizer", help="Sequence model optimizer: adam,rmsprop")
+
+    subparsers.add_parser("ui", help="Launch Streamlit UI")
+
+    # Backward-compatible flags from older CLI versions.
+    parser.add_argument("--run-pipeline", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--models", dest="legacy_models", help=argparse.SUPPRESS)
+    parser.add_argument("--optimizer", dest="legacy_optimizer", help=argparse.SUPPRESS)
 
     args = parser.parse_args()
 
-    if args.run_pipeline:
-        from src.models import normalize_model_selection, normalize_optimizer, SUPPORTED_OPTIMIZERS
-        from src.train import run_pipeline
+    if args.command == "ui":
+        _launch_streamlit_app()
+        return
 
-        if args.models:
-            selected_models = normalize_model_selection(args.models)
-        else:
-            selected_models = _prompt_model_selection()
-        if args.optimizer:
-            selected_optimizer = normalize_optimizer(args.optimizer)
-        elif args.models:
-            selected_optimizer = "adam"
-        else:
-            selected_optimizer = _prompt_optimizer_selection()
-
-        if args.models and not selected_models:
-            print("Invalid --models value.")
-            raise SystemExit(1)
-        if args.optimizer and args.optimizer.strip().lower() not in SUPPORTED_OPTIMIZERS:
-            print("Invalid --optimizer value.")
-            raise SystemExit(1)
-        run_pipeline(selected_models, optimizer=selected_optimizer)
-    else:
+    should_train = args.command == "train" or args.run_pipeline
+    if not should_train:
         interactive_menu()
+        return
+
+    from src.models import normalize_model_selection, normalize_optimizer, SUPPORTED_OPTIMIZERS
+    from src.train import run_pipeline
+
+    raw_models = getattr(args, "models", None) or args.legacy_models
+    raw_optimizer = getattr(args, "optimizer", None) or args.legacy_optimizer
+
+    if raw_models:
+        selected_models = normalize_model_selection(raw_models)
+    else:
+        selected_models = _prompt_model_selection()
+
+    if raw_optimizer:
+        selected_optimizer = normalize_optimizer(raw_optimizer)
+    elif raw_models:
+        selected_optimizer = "adam"
+    else:
+        selected_optimizer = _prompt_optimizer_selection()
+
+    if raw_models and not selected_models:
+        print("Invalid models value.")
+        raise SystemExit(1)
+    if raw_optimizer and raw_optimizer.strip().lower() not in SUPPORTED_OPTIMIZERS:
+        print("Invalid optimizer value.")
+        raise SystemExit(1)
+
+    run_pipeline(selected_models, optimizer=selected_optimizer)
 
 
 if __name__ == "__main__":
